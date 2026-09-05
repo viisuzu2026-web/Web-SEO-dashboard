@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ISUZU SEO Analytics Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            isuzu: {
+              red: '#CC0000',
+              darkred: '#990000',
+              dark: '#12161A',
+              card: '#1A1F26',
+              border: '#2A323D',
+              subtext: '#8E9AA8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0D1015; color: #E1E7EC; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .table-container::-webkit-scrollbar { height: 6px; width: 6px; }
+    .table-container::-webkit-scrollbar-track { background: #12161A; }
+    .table-container::-webkit-scrollbar-thumb { background: #2A323D; border-radius: 4px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col p-4 md:p-6 lg:p-8 space-y-6">
+
+  <!-- TOP HEADER -->
+  <header class="flex flex-col md:flex-row md:items-center md:justify-between pb-5 border-b border-isuzu-border gap-4">
+    <div class="flex items-center space-x-3">
+      <div class="bg-isuzu-red text-white font-extrabold px-3 py-1.5 rounded tracking-widest text-lg shadow-lg shadow-red-900/30">
+        ISUZU
+      </div>
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          HỆ THỐNG GIÁM SÁT HIỆU SUẤT SEO
+          <span id="syncBadge" class="text-xs font-normal px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Trực tiếp
+          </span>
+        </h1>
+        <p class="text-xs text-isuzu-subtext">Đồng bộ tự động thời gian thực từ Google Sheets</p>
+      </div>
+    </div>
+
+    <!-- MONTH SELECTOR & REFRESH -->
+    <div class="flex items-center space-x-3">
+      <button onclick="fetchSheetData()" title="Tải lại số liệu" class="p-2 bg-isuzu-card border border-isuzu-border rounded-lg text-isuzu-subtext hover:text-white hover:border-isuzu-red transition-colors">
+        <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i>
+      </button>
+
+      <div class="flex items-center space-x-3 bg-isuzu-card px-4 py-2 rounded-lg border border-isuzu-border">
+        <i data-lucide="calendar" class="w-4 h-4 text-isuzu-red"></i>
+        <label for="monthFilter" class="text-xs font-semibold text-isuzu-subtext uppercase tracking-wider">Kỳ báo cáo:</label>
+        <select id="monthFilter" onchange="changeMonth(this.value)" class="bg-isuzu-dark text-white text-sm font-semibold rounded px-2.5 py-1 border border-isuzu-border focus:outline-none focus:border-isuzu-red cursor-pointer">
+          <option value="">Đang nạp...</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- MONTHLY NOTE & PAGE ON TOP -->
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2 bg-gradient-to-r from-isuzu-card via-isuzu-card to-zinc-900 p-5 rounded-xl border-l-4 border-l-isuzu-red border border-isuzu-border flex flex-col justify-between">
+      <div>
+        <div class="flex items-center gap-2 text-xs font-bold text-isuzu-red tracking-wider uppercase mb-1">
+          <i data-lucide="sparkles" class="w-4 h-4"></i> Nhận xét & Đánh giá chiến dịch tháng
+        </div>
+        <p id="monthlyRemark" class="text-sm md:text-base text-gray-200 leading-relaxed font-medium">Đang tải nhận xét từ Google Sheet...</p>
+      </div>
+      <div class="mt-3 pt-3 border-t border-isuzu-border/60 flex items-center gap-4 text-xs text-isuzu-subtext">
+        <span><strong class="text-white">Nguồn:</strong> SEO_Monthly_Overview</span>
+        <span>•</span>
+        <span id="lastUpdated">Chưa cập nhật</span>
+      </div>
+    </div>
+
+    <div class="bg-isuzu-card p-5 rounded-xl border border-isuzu-border flex flex-col justify-between">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-isuzu-subtext flex items-center gap-1.5">
+          <i data-lucide="award" class="w-4 h-4 text-amber-500"></i> Page On Top (Cao nhất)
+        </span>
+        <span class="text-[11px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20 font-medium">Lưu lượng #1</span>
+      </div>
+      <div class="my-2">
+        <div id="pageOnTopTitle" class="text-base font-bold text-white line-clamp-1">---</div>
+        <a id="pageOnTopUrl" href="#" target="_blank" class="text-xs text-isuzu-red hover:underline font-mono break-all line-clamp-1">---</a>
+      </div>
+      <div class="text-[11px] text-isuzu-subtext">
+        Trang đón lượng truy cập tự nhiên lớn nhất website.
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 KEY METRICS SCORECARD -->
+  <section class="grid grid-cols-2 md:grid-cols-4 gap-4" id="kpiGrid">
+    <!-- Render từ JS -->
+  </section>
+
+  <!-- 3-MONTH HISTORICAL COMPARISON TABLE -->
+  <section class="bg-isuzu-card rounded-xl border border-isuzu-border overflow-hidden">
+    <div class="p-4 border-b border-isuzu-border flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="p-1.5 bg-isuzu-red/10 text-isuzu-red rounded">
+          <i data-lucide="history" class="w-4 h-4"></i>
+        </div>
+        <h2 class="text-sm md:text-base font-bold text-white tracking-wide">BẢNG ĐỐI CHIẾU LỊCH SỬ 3 THÁNG GẦN NHẤT</h2>
+      </div>
+      <span class="text-xs text-isuzu-subtext">Độ lệch MoM tính tự động</span>
+    </div>
+    <div class="table-container overflow-x-auto">
+      <table class="w-full text-left text-xs md:text-sm">
+        <thead class="bg-isuzu-dark text-isuzu-subtext font-semibold uppercase text-[11px] tracking-wider border-b border-isuzu-border">
+          <tr>
+            <th class="py-3 px-4">Chỉ số theo dõi</th>
+            <th class="py-3 px-4" id="th_m3">Tháng T-2</th>
+            <th class="py-3 px-4" id="th_m2">Tháng T-1</th>
+            <th class="py-3 px-4 text-white" id="th_m1">Tháng hiện tại</th>
+            <th class="py-3 px-4 text-right">Tăng trưởng (MoM)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-isuzu-border" id="historyTableBody">
+          <!-- Render từ JS -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TWO DETAIL TABLES: PAGES & KEYWORDS -->
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- TOP PAGES TABLE -->
+    <div class="bg-isuzu-card rounded-xl border border-isuzu-border overflow-hidden flex flex-col">
+      <div class="p-4 border-b border-isuzu-border flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-text" class="w-4 h-4 text-isuzu-red"></i>
+          <h2 class="text-sm font-bold text-white uppercase tracking-wide">Top Trang Nổi Bật Trong Tháng</h2>
+        </div>
+        <span class="text-xs text-isuzu-subtext">Xếp theo Clicks</span>
+      </div>
+      <div class="table-container overflow-x-auto flex-1 max-h-96">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-isuzu-dark text-isuzu-subtext sticky top-0 uppercase text-[10px] tracking-wider border-b border-isuzu-border">
+            <tr>
+              <th class="py-2.5 px-3">Trang & Tiêu đề</th>
+              <th class="py-2.5 px-3">Phân loại</th>
+              <th class="py-2.5 px-3 text-right">Clicks</th>
+              <th class="py-2.5 px-3 text-right">Vị trí</th>
+              <th class="py-2.5 px-3 text-center">Kế hoạch</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-isuzu-border/60 font-sans" id="pagesTableBody">
+            <!-- Render từ JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TOP KEYWORDS TABLE -->
+    <div class="bg-isuzu-card rounded-xl border border-isuzu-border overflow-hidden flex flex-col">
+      <div class="p-4 border-b border-isuzu-border flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="search" class="w-4 h-4 text-isuzu-red"></i>
+          <h2 class="text-sm font-bold text-white uppercase tracking-wide">Top Từ Khóa Trọng Tâm</h2>
+        </div>
+        <span class="text-xs text-isuzu-subtext">Xếp theo Vị trí & Clicks</span>
+      </div>
+      <div class="table-container overflow-x-auto flex-1 max-h-96">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-isuzu-dark text-isuzu-subtext sticky top-0 uppercase text-[10px] tracking-wider border-b border-isuzu-border">
+            <tr>
+              <th class="py-2.5 px-3">Từ khóa</th>
+              <th class="py-2.5 px-3">Nhóm</th>
+              <th class="py-2.5 px-3 text-right">Vị trí</th>
+              <th class="py-2.5 px-3 text-right">Clicks</th>
+              <th class="py-2.5 px-3 text-right">CTR</th>
+              <th class="py-2.5 px-3 text-center">Kế hoạch</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-isuzu-border/60 font-sans" id="keywordsTableBody">
+            <!-- Render từ JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOGIC SCRIPT KẾT NỐI API -->
+  <script>
+    // ==========================================
+    // CẤU HÌNH LIÊN KẾT GOOGLE APPS SCRIPT
+    // ==========================================
+    // Thay link /exec bạn nhận được từ Bước Triển khai Apps Script vào đây:
+    const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycb.../exec";
+
+    let APP_DATA = { overview: [], pages: [], keywords: [] };
+    let currentSelectedMonth = "";
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchSheetData();
+    });
+
+    // 1. GỌI DỮ LIỆU TỪ GOOGLE SHEET VỀ GIAO DIỆN
+    async function fetchSheetData() {
+      const refreshIcon = document.getElementById('refreshIcon');
+      if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
+      document.getElementById('monthlyRemark').innerHTML = 
+        '<span class="animate-pulse text-amber-400">Đang đồng bộ số liệu mới nhất từ Google Sheets...</span>';
+
+      try {
+        const response = await fetch(GOOGLE_SHEET_API_URL);
+        const json = await response.json();
+
+        if (json.status === "success" && json.overview.length > 0) {
+          APP_DATA = json;
+          
+          // Mặc định chọn tháng mới nhất (dòng cuối cùng)
+          currentSelectedMonth = APP_DATA.overview[APP_DATA.overview.length - 1].month;
+
+          // Cập nhật nhãn giờ
+          const now = new Date();
+          document.getElementById('lastUpdated').textContent = `Đồng bộ: ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+          initMonthDropdown();
+          renderDashboard(currentSelectedMonth);
+        } else {
+          document.getElementById('monthlyRemark').innerHTML = 
+            '<span class="text-rose-400 font-bold">Không tìm thấy bản ghi nào trong Google Sheet!</span>';
+        }
+      } catch (err) {
+        console.error("Fetch API error:", err);
+        document.getElementById('monthlyRemark').innerHTML = 
+          `<span class="text-rose-400 font-bold">Lỗi nạp dữ liệu: ${err.message}. Hãy kiểm tra quyền truy cập Web App (Anyone).</span>`;
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+        lucide.createIcons();
+      }
+    }
+
+    // 2. TẠO DROPDOWN CHỌN THÁNG
+    function initMonthDropdown() {
+      const select = document.getElementById('monthFilter');
+      select.innerHTML = '';
+      APP_DATA.overview.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.month;
+        opt.textContent = `Tháng ${item.month}`;
+        if (item.month === currentSelectedMonth) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function changeMonth(month) {
+      currentSelectedMonth = month;
+      renderDashboard(month);
+      lucide.createIcons();
+    }
+
+    // 3. RENDER TẤT CẢ PHÂN VÙNG
+    function renderDashboard(month) {
+      const current = APP_DATA.overview.find(d => d.month === month) || APP_DATA.overview[APP_DATA.overview.length - 1];
+
+      // A. Nhận xét & Page on Top
+      document.getElementById('monthlyRemark').textContent = current.remark || "Chưa có nhận xét cho kỳ báo cáo này.";
+      document.getElementById('pageOnTopTitle').textContent = current.pageOnTopTitle || current.pageOnTop || "Chưa xác định";
+      const topLink = document.getElementById('pageOnTopUrl');
+      topLink.textContent = current.pageOnTop || "---";
+      topLink.href = current.pageOnTop ? (current.pageOnTop.startsWith('http') ? current.pageOnTop : `https://${current.pageOnTop}`) : '#';
+
+      // B. Render 8 Scorecards
+      renderScorecards(current);
+
+      // C. Render Bảng Lịch sử 3 tháng
+      renderHistoryTable();
+
+      // D. Render Bảng Pages & Keywords
+      renderPagesTable(month);
+      renderKeywordsTable(month);
+    }
+
+    function renderScorecards(d) {
+      const kpis = [
+        { label: 'Lượt hiển thị', val: (d.impressions || 0).toLocaleString(), sub: 'Google Tìm Kiếm', icon: 'eye', color: 'text-blue-400' },
+        { label: 'Tỷ lệ nhấp (CTR)', val: `${d.ctr}%`, sub: 'Hấp dẫn tiêu đề', icon: 'mouse-pointer-click', color: 'text-amber-400' },
+        { label: 'Vị trí trung bình', val: `#${d.position}`, sub: 'Toàn website', icon: 'trending-up', color: 'text-emerald-400' },
+        { label: 'Số phiên tự nhiên', val: (d.organicSessions || 0).toLocaleString(), sub: 'Organic Traffic', icon: 'users', color: 'text-rose-500' },
+        { label: 'Từ khóa Top 5', val: d.kwTop5 || 0, sub: 'Vùng vàng chuyển đổi', icon: 'crown', color: 'text-yellow-400' },
+        { label: 'Từ khóa Top 10', val: d.kwTop10 || 0, sub: 'Trang 1 Google', icon: 'target', color: 'text-indigo-400' },
+        { label: 'Thời gian tương tác', val: `${d.avgEngagementTime || 0}s`, sub: 'Đọc & tương tác', icon: 'clock', color: 'text-teal-400' },
+        { label: 'Tỷ lệ thoát', val: `${d.bounceRate}%`, sub: 'Chất lượng trải nghiệm', icon: 'log-out', color: 'text-gray-400' }
+      ];
+
+      const grid = document.getElementById('kpiGrid');
+      grid.innerHTML = kpis.map(k => `
+        <div class="bg-isuzu-card p-4 rounded-xl border border-isuzu-border flex flex-col justify-between hover:border-isuzu-red/60 transition-colors">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-isuzu-subtext uppercase tracking-wide">${k.label}</span>
+            <i data-lucide="${k.icon}" class="w-4 h-4 ${k.color}"></i>
+          </div>
+          <div>
+            <div class="text-xl md:text-2xl font-extrabold text-white tracking-tight">${k.val}</div>
+            <div class="text-[11px] text-isuzu-subtext mt-1">${k.sub}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderHistoryTable() {
+      const recent = APP_DATA.overview.slice(-3);
+      const tbody = document.getElementById('historyTableBody');
+
+      if (recent.length < 2) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-isuzu-subtext">Cần ít nhất 2 tháng dữ liệu để so sánh lịch sử.</td></tr>`;
+        return;
+      }
+
+      const m1 = recent[recent.length - 1]; // Tháng hiện tại
+      const m2 = recent[recent.length - 2]; // Tháng T-1
+      const m3 = recent.length === 3 ? recent[0] : null; // Tháng T-2
+
+      document.getElementById('th_m3').textContent = m3 ? `Tháng ${m3.month}` : '---';
+      document.getElementById('th_m2').textContent = `Tháng ${m2.month}`;
+      document.getElementById('th_m1').textContent = `Tháng ${m1.month} (Hiện tại)`;
+
+      const metrics = [
+        { label: 'Lượt hiển thị (Impressions)', v3: m3 ? m3.impressions : null, v2: m2.impressions, v1: m1.impressions, format: n => n ? n.toLocaleString() : '---' },
+        { label: 'Tỷ lệ nhấp (CTR %)', v3: m3 ? m3.ctr : null, v2: m2.ctr, v1: m1.ctr, format: n => n !== null ? `${n}%` : '---' },
+        { label: 'Vị trí trung bình', v3: m3 ? m3.position : null, v2: m2.position, v1: m1.position, format: n => n !== null ? `#${n}` : '---', invert: true },
+        { label: 'Số từ khóa Top 5', v3: m3 ? m3.kwTop5 : null, v2: m2.kwTop5, v1: m1.kwTop5, format: n => n !== null ? `${n} từ` : '---' },
+        { label: 'Số từ khóa Top 10', v3: m3 ? m3.kwTop10 : null, v2: m2.kwTop10, v1: m1.kwTop10, format: n => n !== null ? `${n} từ` : '---' },
+        { label: 'Số phiên tự nhiên (Sessions)', v3: m3 ? m3.organicSessions : null, v2: m2.organicSessions, v1: m1.organicSessions, format: n => n ? n.toLocaleString() : '---' },
+        { label: 'Thời gian tương tác TB', v3: m3 ? m3.avgEngagementTime : null, v2: m2.avgEngagementTime, v1: m1.avgEngagementTime, format: n => n !== null ? `${n}s` : '---' },
+        { label: 'Tỷ lệ thoát (Bounce Rate)', v3: m3 ? m3.bounceRate : null, v2: m2.bounceRate, v1: m1.bounceRate, format: n => n !== null ? `${n}%` : '---', invert: true }
+      ];
+
+      tbody.innerHTML = metrics.map(m => {
+        const percent = ((m.v1 - m.v2) / (m.v2 || 1)) * 100;
+        let isGood = m.invert ? percent < 0 : percent > 0;
+        let colorClass = isGood ? 'text-emerald-400' : 'text-rose-400';
+        let arrow = percent >= 0 ? '▲' : '▼';
+
+        return `
+          <tr class="hover:bg-isuzu-dark/50 transition-colors">
+            <td class="py-3 px-4 font-medium text-white">${m.label}</td>
+            <td class="py-3 px-4 text-isuzu-subtext">${m.format(m.v3)}</td>
+            <td class="py-3 px-4 text-isuzu-subtext">${m.format(m.v2)}</td>
+            <td class="py-3 px-4 font-bold text-white bg-white/[0.02]">${m.format(m.v1)}</td>
+            <td class="py-3 px-4 text-right font-semibold ${colorClass}">
+              ${arrow} ${Math.abs(percent).toFixed(1)}%
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderPagesTable(month) {
+      const rows = APP_DATA.pages.filter(p => p.month === month);
+      const tbody = document.getElementById('pagesTableBody');
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-isuzu-subtext">Không có trang nào cho tháng ${month}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => `
+        <tr class="hover:bg-isuzu-dark/40 transition-colors">
+          <td class="py-2.5 px-3">
+            <div class="font-bold text-gray-200 line-clamp-1">${r.title || r.path}</div>
+            <div class="text-[11px] text-isuzu-subtext font-mono">${r.path}</div>
+          </td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-300 border border-zinc-700">${r.category}</span>
+          </td>
+          <td class="py-2.5 px-3 text-right font-semibold text-white">${(r.clicks || 0).toLocaleString()}</td>
+          <td class="py-2.5 px-3 text-right font-bold text-amber-400">#${r.position}</td>
+          <td class="py-2.5 px-3 text-center">
+            ${r.isTarget === 'Kế hoạch' || r.isTarget === 'Mục tiêu'
+              ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-isuzu-red/20 text-red-400 border border-red-800">Kế hoạch</span>`
+              : `<span class="px-2 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-400">Tự nhiên</span>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderKeywordsTable(month) {
+      const rows = APP_DATA.keywords.filter(k => k.month === month);
+      const tbody = document.getElementById('keywordsTableBody');
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-isuzu-subtext">Không có từ khóa nào cho tháng ${month}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => `
+        <tr class="hover:bg-isuzu-dark/40 transition-colors">
+          <td class="py-2.5 px-3 font-medium text-white">${r.keyword}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-300 border border-zinc-700">${r.type}</span>
+          </td>
+          <td class="py-2.5 px-3 text-right font-bold ${r.position <= 3 ? 'text-emerald-400' : 'text-amber-400'}">#${r.position}</td>
+          <td class="py-2.5 px-3 text-right text-gray-200">${r.clicks}</td>
+          <td class="py-2.5 px-3 text-right text-isuzu-subtext">${r.ctr}%</td>
+          <td class="py-2.5 px-3 text-center">
+            ${r.isTarget === 'Kế hoạch' || r.isTarget === 'Mục tiêu'
+              ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-isuzu-red/20 text-red-400 border border-red-800">Kế hoạch</span>`
+              : `<span class="px-2 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-400">Tự nhiên</span>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
